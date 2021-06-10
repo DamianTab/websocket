@@ -21,7 +21,9 @@ export class GameComponent implements OnInit {
     activatedRoute.params.subscribe(result => {
       this.nick = result.nick
       this.room = result.room
-      this.createWebSocket(this.room, this.nick)
+      this.webSocket = new WebSocket("ws://localhost:8080/game?room=game");
+      this.webSocket.binaryType = "arraybuffer";
+      this.webSocket.onmessage = this.receiveMessage
     })
   }
 
@@ -46,18 +48,17 @@ export class GameComponent implements OnInit {
     }
   }
 
+  receiveMessage(event: any) {
+    console.debug("WebSocket message received:", event);
+  }
+
+  sendMessage(){
+    const encoder = new TextEncoder()
+    this.webSocket?.send(encoder.encode("Jazda!"))
+  }
+
   exitGame() {
 
-  }
-
-  private createWebSocket(room: string, nick: string) {
-    this.webSocket = new WebSocket("ws://localhost:8080/game");
-    this.webSocket.binaryType = "arraybuffer";
-    this.webSocket.onmessage = this.receiveMessage
-  }
-
-  private receiveMessage(event: any) {
-    console.debug("WebSocket message received:", event);
   }
 
 
