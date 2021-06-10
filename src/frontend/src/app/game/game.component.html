@@ -1,0 +1,24 @@
+<mat-grid-list class="toolbar" cols="3" rowHeight="8:1">
+
+  <mat-grid-tile>
+    <button mat-raised-button (click)="exitGame()" color="warn">Wyjdź z gry</button>
+  </mat-grid-tile>
+
+  <mat-grid-tile>
+    <mat-form-field >
+      <mat-label>Nick gracza</mat-label>
+      <input matInput [(ngModel)]="nick" disabled="true">
+    </mat-form-field>
+  </mat-grid-tile>
+
+  <mat-grid-tile >
+    <mat-form-field >
+      <mat-label>Score</mat-label>
+      <input matInput [(ngModel)]="score" disabled="true">
+    </mat-form-field>
+  </mat-grid-tile>
+
+</mat-grid-list>
+
+
+<canvas class="center" id="canvas" width="900" height="900"></canvas>

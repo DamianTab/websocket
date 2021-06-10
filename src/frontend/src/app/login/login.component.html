@@ -1,0 +1,33 @@
+
+<mat-grid-list cols="3" rowHeight="8:1">
+
+  <mat-grid-tile></mat-grid-tile>
+  <mat-grid-tile></mat-grid-tile>
+  <mat-grid-tile></mat-grid-tile>
+
+  <mat-grid-tile></mat-grid-tile>
+  <mat-grid-tile>
+    <mat-form-field class="text">
+      <mat-label>Nazwa pokoju</mat-label>
+      <input matInput [(ngModel)]="roomName" placeholder="Np. Damian Game">
+    </mat-form-field>
+  </mat-grid-tile>
+  <mat-grid-tile></mat-grid-tile>
+
+  <mat-grid-tile></mat-grid-tile>
+  <mat-grid-tile>
+    <mat-form-field class="text">
+      <mat-label>Nick gracza</mat-label>
+      <input matInput [(ngModel)]="nick" placeholder="Np. Damian1234">
+    </mat-form-field>
+  </mat-grid-tile>
+  <mat-grid-tile></mat-grid-tile>
+
+  <mat-grid-tile></mat-grid-tile>
+  <mat-grid-tile>
+    <button mat-raised-button (click)="joinGame()" color="primary">Dołącz do gry</button>
+  </mat-grid-tile>
+  <mat-grid-tile></mat-grid-tile>
+
+</mat-grid-list>
+
