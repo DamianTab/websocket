@@ -1,5 +1,6 @@
 import {Component, HostListener, OnInit} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
+import {Player} from "./player";
 
 @Component({
   selector: 'app-game',
@@ -16,6 +17,8 @@ export class GameComponent implements OnInit {
   private cellRadius: number = 10
   private movementSpeed: number = 3
 
+  players: Map<string, Player> = new Map()
+
   room: string = "room"
   nick: string = "nick"
   score: number = 0
@@ -31,10 +34,16 @@ export class GameComponent implements OnInit {
     activatedRoute.params.subscribe(result => {
       this.nick = result.nick
       this.room = result.room
+
+      this.players.set(this.nick, new Player(this.nick, 400, 400, 0, this.random_rgb() ))
+      console.log(this.players)
+
       this.webSocket = new WebSocket(`ws://localhost:8080/game?room=${this.room}&player=${this.nick}`);
       this.webSocket.binaryType = "arraybuffer";
       this.webSocket.onmessage = this.receiveMessage
     })
+
+
   }
 
   ngOnInit(): void {
@@ -42,13 +51,10 @@ export class GameComponent implements OnInit {
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D;
 
     //Init background
-    this.context.fillStyle = this.backgroundColor
-    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
+    this.clearCanvas();
     //Init player
-    this.playerCircle = this.drawPlayer(this.x, this.y, this.nick, this.score)
-    // this.playerCircle.moveTo(800, 800)
-
+    const actualPlayer = this.players.get(this.nick)
+    this.playerCircle = this.drawPlayer(this.x, this.y, this.nick, this.score, this.random_rgb() )
 
     const rectangle = new Path2D();
     rectangle.rect(10, 10, 50, 50);
@@ -59,7 +65,6 @@ export class GameComponent implements OnInit {
 
   exitGame() {
     this.score += 1
-
   }
 
   receiveMessage(event: any) {
@@ -97,7 +102,7 @@ export class GameComponent implements OnInit {
       this.y += dy
       this.x = this.standardizeValue(this.x)
       this.y = this.standardizeValue(this.y)
-      this.drawPlayer(this.x, this.y, this.nick, this.score)
+      this.drawPlayer(this.x, this.y, this.nick, this.score, this.random_rgb())
       this.animationFrameId = requestAnimationFrame(this.movePlayer.bind(this))
     } else {
       cancelAnimationFrame(this.animationFrameId)
@@ -105,17 +110,17 @@ export class GameComponent implements OnInit {
     console.log("1111")
   }
 
-  drawPlayer(x: number, y: number, nick: string, score: number) {
-    const player = this.drawCircle(x, y, this.playerRadius)
+  drawPlayer(x: number, y: number, nick: string, score: number, color: string) {
+    const player = this.drawCircle(x, y, this.playerRadius, color)
     this.drawText(x, y, nick)
     this.drawScore(x, y, score)
     return player
   }
 
-  drawCircle(x: number, y: number, radius: number) {
+  drawCircle(x: number, y: number, radius: number, color: string = this.random_rgb()) {
     const circle = new Path2D();
     // @ts-ignore
-    this.context.fillStyle = this.random_rgb();
+    this.context.fillStyle = color
     circle.arc(x, y, radius, 0, 2 * Math.PI);
     // @ts-ignore
     this.context.fill(circle);
@@ -144,7 +149,15 @@ export class GameComponent implements OnInit {
     this.context?.fillText(score.toString(), x, y + 18, 30);
   }
 
-  random_rgb() {
+  clearCanvas(){
+    // @ts-ignore
+    this.context.fillStyle = this.backgroundColor
+    // @ts-ignore
+    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  private random_rgb() {
+    //todo random gdzie zaczyna gracz
     const randomBetween = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
     const r = randomBetween(30, 240);
     const g = randomBetween(30, 240);
