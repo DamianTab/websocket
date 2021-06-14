@@ -1,6 +1,7 @@
 import {Component, HostListener, OnInit} from '@angular/core';
 import {ActivatedRoute} from '@angular/router';
 import {Player} from "./player";
+import {Cell} from "./cell";
 
 @Component({
   selector: 'app-game',
@@ -9,15 +10,16 @@ import {Player} from "./player";
 })
 export class GameComponent implements OnInit {
   private canvas!: HTMLCanvasElement;
-  private context!: CanvasRenderingContext2D ;
+  private context!: CanvasRenderingContext2D;
   private webSocket!: WebSocket;
 
   private backgroundColor: string = 'rgb(240, 240, 240)'
-  private playerRadius: number = 25
+  private playerRadius: number = 35
   private cellRadius: number = 10
-  private movementSpeed: number = 4
+  private movementSpeed: number = 3
 
   players: Map<string, Player> = new Map()
+  cells: Cell[] = []
 
   room: string = "room"
   nick: string = "nick"
@@ -31,13 +33,11 @@ export class GameComponent implements OnInit {
     activatedRoute.params.subscribe(result => {
       this.nick = result.nick
       this.room = result.room
-
-      this.players.set(this.nick, new Player(this.nick, this.randomBetween(100,800), this.randomBetween(100,800), 0, this.random_rgb()))
-      console.log(this.players)
-
       this.webSocket = new WebSocket(`ws://localhost:8080/game?room=${this.room}&player=${this.nick}`);
       this.webSocket.binaryType = "arraybuffer";
       this.webSocket.onmessage = this.receiveMessage
+      this.players.set(this.nick, new Player(this.nick, this.randomBetween(100, 800), this.randomBetween(100, 800), 0, this.random_rgb()))
+      //todo przesylac tutaj wiadomosc do backendu o polozeniu gracza
     })
   }
 
@@ -45,30 +45,31 @@ export class GameComponent implements OnInit {
     this.canvas = document.getElementById('canvas') as HTMLCanvasElement;
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D;
 
-    //Init background
-    this.clearCanvas();
-    //Init player
-    const currentPlayer = this.players.get(this.nick)!
-    this.drawPlayer(currentPlayer, currentPlayer.color)
+    //  todo usunac to jest testowe
+    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), false, undefined, this.random_rgb()))
+    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), false, undefined, this.random_rgb()))
+    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), true, undefined, this.random_rgb()))
+    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), false, undefined, this.random_rgb()))
+    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), true, undefined, this.random_rgb()))
 
-    const rectangle = new Path2D();
-    rectangle.rect(10, 10, 50, 50);
-    this.context.stroke(rectangle);
-
-    this.drawCircle(100, 100, this.cellRadius)
+    //Draw all entities
+    this.redrawAll()
   }
 
   exitGame() {
     this.score += 1
+    //  todo zrobic wychodzenie i obsluge odświezania
   }
 
   receiveMessage(event: any) {
     console.debug("WebSocket message received:", event);
+    //  todo odbieranie
   }
 
   sendMessage() {
     const encoder = new TextEncoder()
     this.webSocket?.send(encoder.encode("Jazda!"))
+    //  todo wysylanie
   }
 
   @HostListener('document:click', ['$event'])
@@ -82,33 +83,37 @@ export class GameComponent implements OnInit {
   }
 
   movePlayer() {
-    const currentPlayer : Player = this.players.get(this.nick)!
+    const currentPlayer: Player = this.players.get(this.nick)!
     let dx = (this.mouseX - currentPlayer.x) * .125;
     let dy = (this.mouseY - currentPlayer.y) * .125;
     let distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance > this.movementSpeed) {
-      this.clearPlayer(currentPlayer)
       dx *= this.movementSpeed / distance;
       dy *= this.movementSpeed / distance;
       currentPlayer.x += Math.round(dx)
       currentPlayer.y += Math.round(dy)
       currentPlayer.x = this.standardizeValue(currentPlayer.x)
       currentPlayer.y = this.standardizeValue(currentPlayer.y)
-      this.drawPlayer(currentPlayer, currentPlayer.color)
+      this.redrawAll()
       this.animationFrameId = requestAnimationFrame(this.movePlayer.bind(this))
     } else {
       cancelAnimationFrame(this.animationFrameId)
     }
-    console.log("1111")
   }
 
-  clearPlayer(player: Player){
-    this.drawCircle(player.x, player.y, this.playerRadius+1, this.backgroundColor)
+  redrawAll() {
+    this.clearCanvas();
+    this.cells.forEach(cell => {
+      if (!cell.occupied) {
+        this.drawCircle(cell.x, cell.y, this.cellRadius, cell.color)
+      }
+    })
+    this.players.forEach(player => this.drawPlayer(player))
   }
 
-  drawPlayer(player: Player, color: string) {
-    this.drawCircle(player.x, player.y, this.playerRadius, color)
+  drawPlayer(player: Player) {
+    this.drawCircle(player.x, player.y, this.playerRadius, player.color)
     this.drawText(player.x, player.y, player.nick)
     this.drawScore(player.x, player.y, player.score)
   }
@@ -146,10 +151,9 @@ export class GameComponent implements OnInit {
     return `rgb(${r},${g},${b})`;
   }
 
-  randomBetween(min: number, max: number){
+  randomBetween(min: number, max: number) {
     return min + Math.floor(Math.random() * (max - min + 1));
   }
-
 
   private standardizeValue(value: number) {
     if (value < 0) return 0;

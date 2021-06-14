@@ -18,13 +18,14 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
 
     private Map<String, Game> games = new HashMap<>();
 
+//    todo generowac liste cells i propagowac do klientow
+//    todo sprawdzanie czy zajal cell przy ruchu klienta
     @Override
     protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) throws Exception {
         String s = StandardCharsets.UTF_8.decode(message.getPayload()).toString();
         log.info(s);
         Map<String, String> params = extractClientCredentials(session.getUri().getQuery());
         log.info(String.valueOf(params));
-
 
 
         try {
