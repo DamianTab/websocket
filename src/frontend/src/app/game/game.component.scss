@@ -2,9 +2,11 @@
   border-style: groove;
 }
 
-.center {
+.canvas-root {
   display: block;
   margin-left: auto;
   margin-right: auto;
   margin-top: 1.5em;
+
+  border: 3px solid #666666;
 }

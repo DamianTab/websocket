@@ -6,20 +6,17 @@
   </mat-grid-tile>
 
   <mat-grid-tile>
-    <mat-form-field >
-      <mat-label>Nick gracza</mat-label>
-      <input matInput [(ngModel)]="nick" disabled="true">
-    </mat-form-field>
+      <span>
+        Players Nick: "{{nick}}"
+      </span>
   </mat-grid-tile>
 
-  <mat-grid-tile >
-    <mat-form-field >
-      <mat-label>Score</mat-label>
-      <input matInput [(ngModel)]="score" disabled="true">
-    </mat-form-field>
+  <mat-grid-tile>
+    <span>
+      Score: {{score}}
+    </span>
   </mat-grid-tile>
 
 </mat-grid-list>
 
-
-<canvas class="center" id="canvas" width="900" height="900"></canvas>
+<canvas id="canvas" class="canvas-root" width="900" height="900"></canvas>
