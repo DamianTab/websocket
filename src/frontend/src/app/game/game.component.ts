@@ -32,15 +32,13 @@ export class GameComponent implements OnInit {
       this.nick = result.nick
       this.room = result.room
 
-      this.players.set(this.nick, new Player(this.nick, 400, 400, 0, this.random_rgb()))
+      this.players.set(this.nick, new Player(this.nick, this.randomBetween(100,800), this.randomBetween(100,800), 0, this.random_rgb()))
       console.log(this.players)
 
       this.webSocket = new WebSocket(`ws://localhost:8080/game?room=${this.room}&player=${this.nick}`);
       this.webSocket.binaryType = "arraybuffer";
       this.webSocket.onmessage = this.receiveMessage
     })
-
-
   }
 
   ngOnInit(): void {
@@ -93,8 +91,8 @@ export class GameComponent implements OnInit {
       this.clearPlayer(currentPlayer)
       dx *= this.movementSpeed / distance;
       dy *= this.movementSpeed / distance;
-      currentPlayer.x += dx
-      currentPlayer.y += dy
+      currentPlayer.x += Math.round(dx)
+      currentPlayer.y += Math.round(dy)
       currentPlayer.x = this.standardizeValue(currentPlayer.x)
       currentPlayer.y = this.standardizeValue(currentPlayer.y)
       this.drawPlayer(currentPlayer, currentPlayer.color)
@@ -106,7 +104,7 @@ export class GameComponent implements OnInit {
   }
 
   clearPlayer(player: Player){
-    this.drawCircle(player.x, player.y, this.playerRadius, this.backgroundColor)
+    this.drawCircle(player.x, player.y, this.playerRadius+1, this.backgroundColor)
   }
 
   drawPlayer(player: Player, color: string) {
@@ -142,12 +140,14 @@ export class GameComponent implements OnInit {
   }
 
   private random_rgb() {
-    //todo random gdzie zaczyna gracz
-    const randomBetween = (min: number, max: number) => min + Math.floor(Math.random() * (max - min + 1));
-    const r = randomBetween(30, 240);
-    const g = randomBetween(30, 240);
-    const b = randomBetween(30, 240);
+    const r = this.randomBetween(30, 240);
+    const g = this.randomBetween(30, 240);
+    const b = this.randomBetween(30, 240);
     return `rgb(${r},${g},${b})`;
+  }
+
+  randomBetween(min: number, max: number){
+    return min + Math.floor(Math.random() * (max - min + 1));
   }
 
 
