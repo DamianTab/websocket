@@ -8,23 +8,20 @@ import {Player} from "./player";
   styleUrls: ['./game.component.scss']
 })
 export class GameComponent implements OnInit {
-  private canvas: HTMLCanvasElement | undefined;
-  private context: CanvasRenderingContext2D | undefined;
-  private webSocket: WebSocket | undefined;
+  private canvas!: HTMLCanvasElement;
+  private context!: CanvasRenderingContext2D ;
+  private webSocket!: WebSocket;
 
   private backgroundColor: string = 'rgb(240, 240, 240)'
   private playerRadius: number = 25
   private cellRadius: number = 10
-  private movementSpeed: number = 3
+  private movementSpeed: number = 4
 
   players: Map<string, Player> = new Map()
 
   room: string = "room"
   nick: string = "nick"
   score: number = 0
-  x: number = 450
-  y: number = 450
-  playerCircle: Path2D | undefined
 
   mouseX: number = 450
   mouseY: number = 450
@@ -35,7 +32,7 @@ export class GameComponent implements OnInit {
       this.nick = result.nick
       this.room = result.room
 
-      this.players.set(this.nick, new Player(this.nick, 400, 400, 0, this.random_rgb() ))
+      this.players.set(this.nick, new Player(this.nick, 400, 400, 0, this.random_rgb()))
       console.log(this.players)
 
       this.webSocket = new WebSocket(`ws://localhost:8080/game?room=${this.room}&player=${this.nick}`);
@@ -53,8 +50,8 @@ export class GameComponent implements OnInit {
     //Init background
     this.clearCanvas();
     //Init player
-    const actualPlayer = this.players.get(this.nick)
-    this.playerCircle = this.drawPlayer(this.x, this.y, this.nick, this.score, this.random_rgb() )
+    const currentPlayer = this.players.get(this.nick)!
+    this.drawPlayer(currentPlayer, currentPlayer.color)
 
     const rectangle = new Path2D();
     rectangle.rect(10, 10, 50, 50);
@@ -79,30 +76,28 @@ export class GameComponent implements OnInit {
   @HostListener('document:click', ['$event'])
   click(event: any) {
     cancelAnimationFrame(this.animationFrameId)
-    // @ts-ignore
     this.mouseX = event.x - this.canvas?.offsetLeft
     this.mouseX = this.standardizeValue(this.mouseX)
-    // @ts-ignore
     this.mouseY = event.y - this.canvas?.offsetTop
     this.mouseY = this.standardizeValue(this.mouseY)
     this.movePlayer()
   }
 
   movePlayer() {
-    // @ts-ignore
-    let dx = (this.mouseX - this.x) * .125;
-    // @ts-ignore
-    let dy = (this.mouseY - this.y) * .125;
+    const currentPlayer : Player = this.players.get(this.nick)!
+    let dx = (this.mouseX - currentPlayer.x) * .125;
+    let dy = (this.mouseY - currentPlayer.y) * .125;
     let distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance > this.movementSpeed) {
+      this.clearPlayer(currentPlayer)
       dx *= this.movementSpeed / distance;
       dy *= this.movementSpeed / distance;
-      this.x += dx
-      this.y += dy
-      this.x = this.standardizeValue(this.x)
-      this.y = this.standardizeValue(this.y)
-      this.drawPlayer(this.x, this.y, this.nick, this.score, this.random_rgb())
+      currentPlayer.x += dx
+      currentPlayer.y += dy
+      currentPlayer.x = this.standardizeValue(currentPlayer.x)
+      currentPlayer.y = this.standardizeValue(currentPlayer.y)
+      this.drawPlayer(currentPlayer, currentPlayer.color)
       this.animationFrameId = requestAnimationFrame(this.movePlayer.bind(this))
     } else {
       cancelAnimationFrame(this.animationFrameId)
@@ -110,49 +105,39 @@ export class GameComponent implements OnInit {
     console.log("1111")
   }
 
-  drawPlayer(x: number, y: number, nick: string, score: number, color: string) {
-    const player = this.drawCircle(x, y, this.playerRadius, color)
-    this.drawText(x, y, nick)
-    this.drawScore(x, y, score)
-    return player
+  clearPlayer(player: Player){
+    this.drawCircle(player.x, player.y, this.playerRadius, this.backgroundColor)
+  }
+
+  drawPlayer(player: Player, color: string) {
+    this.drawCircle(player.x, player.y, this.playerRadius, color)
+    this.drawText(player.x, player.y, player.nick)
+    this.drawScore(player.x, player.y, player.score)
   }
 
   drawCircle(x: number, y: number, radius: number, color: string = this.random_rgb()) {
     const circle = new Path2D();
-    // @ts-ignore
     this.context.fillStyle = color
     circle.arc(x, y, radius, 0, 2 * Math.PI);
-    // @ts-ignore
     this.context.fill(circle);
-    return circle;
   }
 
   drawText(x: number, y: number, text: string) {
-    // @ts-ignore
     this.context.fillStyle = 'rgb(0,0,0)';
-    // @ts-ignore
     this.context.font = '18px arial';
-    // @ts-ignore
-    this.context?.textAlign = "center";
-    // @ts-ignore
+    this.context.textAlign = "center";
     this.context?.fillText(text, x, y, 100);
   }
 
   drawScore(x: number, y: number, score: number) {
-    // @ts-ignore
     this.context.fillStyle = 'rgb(0,0,0)';
-    // @ts-ignore
     this.context.font = '20px arial';
-    // @ts-ignore
-    this.context?.textAlign = "center";
-    // @ts-ignore
+    this.context.textAlign = "center";
     this.context?.fillText(score.toString(), x, y + 18, 30);
   }
 
-  clearCanvas(){
-    // @ts-ignore
+  clearCanvas() {
     this.context.fillStyle = this.backgroundColor
-    // @ts-ignore
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
