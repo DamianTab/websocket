@@ -6,6 +6,7 @@ import damian.tab.websocket.model.Player;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.BinaryMessage;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.BinaryWebSocketHandler;
 
@@ -25,7 +26,7 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
     private Map<String, Game> games = new ConcurrentHashMap<>();
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
+    public void afterConnectionEstablished(WebSocketSession session) throws IOException {
         Map<String, String> params = extractClientCredentials(session.getUri().getQuery());
         String roomName = params.get("room");
         String playerNick = params.get("player");
@@ -37,16 +38,37 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
             games.put(roomName, game);
             log.info("New game in room: {}", roomName);
         } else {
+            if (game.getSuspendedPlayers().containsKey(playerNick)) {
+                player = game.getSuspendedPlayers().remove(playerNick);
+                player = new Player(player.getX(), player.getY(), player.getScore(), playerNick, session);
+            }
             game.getPlayers().put(playerNick, player);
         }
-        log.info("New player: {} in game: {}", playerNick, roomName);
+        log.info("+++ New player: {}        in game: {}", playerNick, roomName);
 //        Init Cells position for current session
         broadcastAllCellsToPlayer(session, game.getCells());
-//        Init rest players position for currect session
+//        Init rest players position for current session
         broadcastAllPlayersToPlayer(session, game.getPlayers());
 //        Inform all other sessions about new player
         broadcastPlayerMoveMessage(game, player);
-        //todo reconnect poopusczeniu z suspended players
+    }
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        Map<String, String> params = extractClientCredentials(session.getUri().getQuery());
+        String roomName = params.get("room");
+        String playerNick = params.get("player");
+
+        Game game = games.get(roomName);
+        log.info("--- Delete player: {}        from game: {}", playerNick, roomName);
+        Player deletedPlayer = game.getPlayers().remove(playerNick);
+        game.getSuspendedPlayers().put(playerNick, deletedPlayer);
+//        Inform other players about leave the match
+        broadcastPlayerMoveMessage(game, new Player((short) -1, (short) -1, (short) -1, playerNick, null));
+        if (game.getPlayers().size() == 0) {
+            games.remove(roomName);
+        }
+
     }
 
     @Override
@@ -68,7 +90,6 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
     }
 
     private void broadcastAllPlayersToPlayer(WebSocketSession session, Map<String, Player> players) {
-        log.info(String.valueOf(players));
         players.forEach((key, player) -> {
             sendPlayerMoveMessage(session, player);
         });
@@ -91,7 +112,7 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
                     .put(nickBytes)
                     .array();
             BinaryMessage message = new BinaryMessage(arr);
-            synchronized(session){
+            synchronized (session) {
                 session.sendMessage(message);
             }
         } catch (IOException e) {
@@ -112,7 +133,7 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
                     .put(shortToBytes(cell.getOccupied()))
                     .array();
             BinaryMessage message = new BinaryMessage(arr);
-            synchronized(session){
+            synchronized (session) {
                 session.sendMessage(message);
             }
         } catch (IOException e) {

@@ -1,5 +1,5 @@
-import {Component, HostListener, OnInit} from '@angular/core';
-import {ActivatedRoute} from '@angular/router';
+import {Component, HostListener, OnDestroy, OnInit} from '@angular/core';
+import {ActivatedRoute, Router} from '@angular/router';
 import {Player} from "./player";
 import {Cell} from "./cell";
 
@@ -8,7 +8,7 @@ import {Cell} from "./cell";
   templateUrl: './game.component.html',
   styleUrls: ['./game.component.scss']
 })
-export class GameComponent implements OnInit {
+export class GameComponent implements OnInit, OnDestroy {
   private canvas!: HTMLCanvasElement;
   private context!: CanvasRenderingContext2D;
   private webSocket!: WebSocket;
@@ -29,19 +29,18 @@ export class GameComponent implements OnInit {
   mouseY: number = 450
   animationFrameId: number = 0
 
-  constructor(private activatedRoute: ActivatedRoute) {
+  constructor(private activatedRoute: ActivatedRoute, private router: Router) {
     activatedRoute.params.subscribe(result => {
       this.nick = result.nick
       this.room = result.room
       this.webSocket = new WebSocket(`ws://localhost:8080/game?room=${this.room}&player=${this.nick}`);
       this.webSocket.binaryType = "arraybuffer";
       this.webSocket.onmessage = this.receiveMessage.bind(this)
-
-      //Init player
-      // const currentPlayer = new Player(this.nick, this.randomBetween(100, 800), this.randomBetween(100, 800), 0, this.random_rgb())
-      // this.players.set(this.nick, currentPlayer)
-      // this.sendPlayerPositionMessage(currentPlayer)
     })
+  }
+
+  ngOnDestroy(): void {
+    this.webSocket.close();
   }
 
   ngOnInit(): void {
@@ -51,10 +50,7 @@ export class GameComponent implements OnInit {
   }
 
   exitGame() {
-    this.score += 1
-    const player: Player = this.players.get(this.nick)!
-    player.score += 1
-    //  todo zrobic wychodzenie i obsluge odświezania
+    this.router.navigate(['/'])
   }
 
   receiveMessage(event: any) {
@@ -72,11 +68,16 @@ export class GameComponent implements OnInit {
         const color = this.players.has(nick) ? this.players.get(nick)!.color : this.random_rgb()
         // console.log(`Type: ${data.getInt16(0)}, X: ${data.getInt16(2)}, Y: ${data.getInt16(4)}, SCORE: ${data.getInt16(6)}, Nick: ${decoder.decode(nickBuffer)}`)
 
-        //If the same player then only update score
-        if (this.nick == nick && this.players.get(this.nick)) {
+        //Delete user that already left match
+        if(x == -1 && y == -1 && score ==-1){
+          this.players.delete(nick)
+          this.redrawAll()
+        }else if (this.nick == nick && this.players.get(this.nick)) {
+          //If the same player then only update score
           const currentPlayer = this.players.get(this.nick)
           currentPlayer!.score = score;
         } else {
+          //Update other players
           this.players.set(nick, new Player(nick, x, y, score, color))
           this.redrawAll()
         }
