@@ -10,6 +10,7 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.BinaryWebSocketHandler;
 
+import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -18,6 +19,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import static damian.tab.websocket.Utils.CELL_RADIUS;
+import static damian.tab.websocket.Utils.PLAYER_RADIUS;
 
 @Slf4j
 @Service
@@ -46,9 +50,9 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
         }
         log.info("+++ New player: {}        in game: {}", playerNick, roomName);
 //        Init Cells position for current session
-        broadcastAllCellsToPlayer(session, game.getCells());
+        sendAllCellsToPlayer(session, game.getCells());
 //        Init rest players position for current session
-        broadcastAllPlayersToPlayer(session, game.getPlayers());
+        sendAllPlayersMovesToPlayer(session, game.getPlayers());
 //        Inform all other sessions about new player
         broadcastPlayerMoveMessage(game, player);
     }
@@ -85,11 +89,23 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
             value.setY(messagePlayer.getY());
             return value;
         });
+
+        game.getCells().stream()
+                .filter(cell -> Point2D.distance(cell.getX(), cell.getY(), player.getX(), player.getY()) <= PLAYER_RADIUS - CELL_RADIUS)
+                .forEach(cell -> {
+                    synchronized (cell) {
+                        if (cell.getOccupied() == 0) {
+                            cell.setOccupied((short) 1);
+                            cell.setPlayerNick(playerNick);
+                            player.setScore((short) (player.getScore() + 1));
+                            broadcastCellInfoMessage(game, cell);
+                        }
+                    }
+                });
         broadcastPlayerMoveMessage(game, player);
-//        todo jesli gracz obejmuje cell to wtedy przejmuje je i wysyla wiadomosci do wszystkich
     }
 
-    private void broadcastAllPlayersToPlayer(WebSocketSession session, Map<String, Player> players) {
+    private void sendAllPlayersMovesToPlayer(WebSocketSession session, Map<String, Player> players) {
         players.forEach((key, player) -> {
             sendPlayerMoveMessage(session, player);
         });
@@ -120,8 +136,14 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
         }
     }
 
-    private void broadcastAllCellsToPlayer(WebSocketSession session, List<Cell> cells) {
+    private void sendAllCellsToPlayer(WebSocketSession session, List<Cell> cells) {
         cells.forEach(cell -> sendCellInfoMessage(session, cell));
+    }
+
+    private void broadcastCellInfoMessage(Game game, Cell cell) {
+        game.getPlayers().forEach((key, player) -> {
+            sendCellInfoMessage(player.getSession(), cell);
+        });
     }
 
     private void sendCellInfoMessage(WebSocketSession session, Cell cell) {

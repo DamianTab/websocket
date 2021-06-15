@@ -11,7 +11,7 @@ import static damian.tab.websocket.Utils.getRandomBetween;
 
 @Data
 public class Game {
-    private static final int GAME_CELLS = 30;
+    private static final int GAME_CELLS = 20;
 
     private Map<String, Player> players = new ConcurrentHashMap<>();
     private Map<String, Player> suspendedPlayers = new ConcurrentHashMap<>();

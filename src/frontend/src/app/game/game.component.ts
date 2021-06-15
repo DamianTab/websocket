@@ -71,16 +71,16 @@ export class GameComponent implements OnInit, OnDestroy {
         //Delete user that already left match
         if(x == -1 && y == -1 && score ==-1){
           this.players.delete(nick)
-          this.redrawAll()
         }else if (this.nick == nick && this.players.get(this.nick)) {
           //If the same player then only update score
           const currentPlayer = this.players.get(this.nick)
           currentPlayer!.score = score;
+          this.score = score
         } else {
           //Update other players
           this.players.set(nick, new Player(nick, x, y, score, color))
-          this.redrawAll()
         }
+        this.redrawAll()
         break;
 
       //Cell Info
@@ -88,6 +88,10 @@ export class GameComponent implements OnInit, OnDestroy {
         const xCell = data.getInt16(2)
         const yCell = data.getInt16(4)
         const occupied = data.getInt16(6)
+        const cellToRemove =  this.cells.find(cell => cell.x == xCell && cell.y == yCell)
+        if(cellToRemove){
+          this.cells.splice(this.cells.indexOf(cellToRemove), 1)
+        }
         this.cells.push(new Cell(xCell, yCell, occupied !== 0, this.random_rgb()))
         this.redrawAll()
         break;
