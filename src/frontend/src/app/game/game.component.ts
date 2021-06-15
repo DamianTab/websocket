@@ -58,18 +58,36 @@ export class GameComponent implements OnInit {
 
   exitGame() {
     this.score += 1
+    const player: Player = this.players.get(this.nick)!
+    player.score += 1
     //  todo zrobic wychodzenie i obsluge odświezania
   }
 
   receiveMessage(event: any) {
-    console.debug("WebSocket message received:", event);
+    // console.debug("WebSocket message received:", event);
+    let data = new Int8Array(event.data);
+    console.log(data)
     //  todo odbieranie
   }
 
-  sendMessage() {
+  sendPlayerPositionMessage(player: Player) {
+    let data: Int8Array | Int16Array = Int16Array.of(1, player.x, player.y, player.score)
+    data = new Int8Array(data.buffer)
+    data = this.concatStringWithTypedArrays(data, player.nick);
+    this.webSocket?.send(data)
+  }
+
+  concatStringWithTypedArrays(array: Int8Array, string: string) {
     const encoder = new TextEncoder()
-    this.webSocket?.send(encoder.encode("Jazda!"))
-    //  todo wysylanie
+    const stringAsBytes = encoder.encode(string)
+    const newArray = new Int8Array(array.length + string.length);
+    newArray.set(array, 0);
+    newArray.set(stringAsBytes, array.length);
+    return newArray;
+  }
+
+  stringToArrayInt(str: string) {
+
   }
 
   @HostListener('document:click', ['$event'])
@@ -95,6 +113,7 @@ export class GameComponent implements OnInit {
       currentPlayer.y += Math.round(dy)
       currentPlayer.x = this.standardizeValue(currentPlayer.x)
       currentPlayer.y = this.standardizeValue(currentPlayer.y)
+      this.sendPlayerPositionMessage(currentPlayer)
       this.redrawAll()
       this.animationFrameId = requestAnimationFrame(this.movePlayer.bind(this))
     } else {

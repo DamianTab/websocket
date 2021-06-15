@@ -4,8 +4,8 @@ import lombok.Data;
 
 @Data
 public class Cell {
-    private final int x;
-    private final int y;
-    private boolean occupied;
-    private String playerNick;
+    private final short x;
+    private final short y;
+    private short occupied = 0;
+    private String playerNick = "null";
 }

@@ -1,11 +1,17 @@
 package damian.tab.websocket.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.socket.WebSocketSession;
 
+@AllArgsConstructor
+@RequiredArgsConstructor
 @Data
-class Player {
-    private int x;
-    private int y;
-    private int score;
+public class Player {
+    private short x;
+    private short y;
+    private short score;
     private final String nick;
+    private final WebSocketSession session;
 }
