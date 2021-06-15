@@ -16,7 +16,7 @@ export class GameComponent implements OnInit {
   private backgroundColor: string = 'rgb(240, 240, 240)'
   private playerRadius: number = 35
   private cellRadius: number = 10
-  private movementSpeed: number = 3
+  private movementSpeed: number = 4
 
   players: Map<string, Player> = new Map()
   cells: Cell[] = []
@@ -35,24 +35,18 @@ export class GameComponent implements OnInit {
       this.room = result.room
       this.webSocket = new WebSocket(`ws://localhost:8080/game?room=${this.room}&player=${this.nick}`);
       this.webSocket.binaryType = "arraybuffer";
-      this.webSocket.onmessage = this.receiveMessage
-      this.players.set(this.nick, new Player(this.nick, this.randomBetween(100, 800), this.randomBetween(100, 800), 0, this.random_rgb()))
-      //todo przesylac tutaj wiadomosc do backendu o polozeniu gracza
+      this.webSocket.onmessage = this.receiveMessage.bind(this)
+
+      //Init player
+      // const currentPlayer = new Player(this.nick, this.randomBetween(100, 800), this.randomBetween(100, 800), 0, this.random_rgb())
+      // this.players.set(this.nick, currentPlayer)
+      // this.sendPlayerPositionMessage(currentPlayer)
     })
   }
 
   ngOnInit(): void {
     this.canvas = document.getElementById('canvas') as HTMLCanvasElement;
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D;
-
-    //  todo usunac to jest testowe
-    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), false, undefined, this.random_rgb()))
-    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), false, undefined, this.random_rgb()))
-    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), true, undefined, this.random_rgb()))
-    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), false, undefined, this.random_rgb()))
-    this.cells.push(new Cell(this.randomBetween(100, 800), this.randomBetween(100, 800), true, undefined, this.random_rgb()))
-
-    //Draw all entities
     this.redrawAll()
   }
 
@@ -64,10 +58,51 @@ export class GameComponent implements OnInit {
   }
 
   receiveMessage(event: any) {
-    // console.debug("WebSocket message received:", event);
-    let data = new Int8Array(event.data);
-    console.log(data)
-    //  todo odbieranie
+    const data = new DataView(event.data);
+
+    switch (data.getInt16(0)) {
+      //Player move
+      case 1:
+        const nickBuffer = data.buffer.slice(8, data.byteLength)
+        const decoder = new TextDecoder();
+        const nick = decoder.decode(nickBuffer)
+        const x = data.getInt16(2)
+        const y = data.getInt16(4)
+        const score = data.getInt16(6)
+        const color = this.players.has(nick) ? this.players.get(nick)!.color : this.random_rgb()
+        // console.log(`Type: ${data.getInt16(0)}, X: ${data.getInt16(2)}, Y: ${data.getInt16(4)}, SCORE: ${data.getInt16(6)}, Nick: ${decoder.decode(nickBuffer)}`)
+
+        //If the same player then only update score
+        if (this.nick == nick && this.players.get(this.nick)) {
+          const currentPlayer = this.players.get(this.nick)
+          currentPlayer!.score = score;
+        } else {
+          this.players.set(nick, new Player(nick, x, y, score, color))
+          this.redrawAll()
+        }
+        break;
+
+      //Cell Info
+      case 2:
+        const xCell = data.getInt16(2)
+        const yCell = data.getInt16(4)
+        const occupied = data.getInt16(6)
+        this.cells.push(new Cell(xCell, yCell, occupied !== 0, this.random_rgb()))
+        this.redrawAll()
+        break;
+
+      case 3:
+        //todo game start
+        console.log("3333333333333333333")
+        break;
+
+      case 4:
+        //todo game end
+        console.log("444444444444444444444")
+        break;
+    }
+
+
   }
 
   sendPlayerPositionMessage(player: Player) {
@@ -84,10 +119,6 @@ export class GameComponent implements OnInit {
     newArray.set(array, 0);
     newArray.set(stringAsBytes, array.length);
     return newArray;
-  }
-
-  stringToArrayInt(str: string) {
-
   }
 
   @HostListener('document:click', ['$event'])
@@ -170,7 +201,7 @@ export class GameComponent implements OnInit {
     return `rgb(${r},${g},${b})`;
   }
 
-  randomBetween(min: number, max: number) {
+  private randomBetween(min: number, max: number) {
     return min + Math.floor(Math.random() * (max - min + 1));
   }
 
