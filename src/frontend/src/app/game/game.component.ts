@@ -2,6 +2,7 @@ import {Component, HostListener, OnDestroy, OnInit} from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
 import {Player} from "./player";
 import {Cell} from "./cell";
+import {MatSnackBar} from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-game',
@@ -16,7 +17,8 @@ export class GameComponent implements OnInit, OnDestroy {
   private backgroundColor: string = 'rgb(240, 240, 240)'
   private playerRadius: number = 35
   private cellRadius: number = 10
-  private movementSpeed: number = 4
+  private movementSpeed: number = 3
+  private gameCells: number = 10
 
   players: Map<string, Player> = new Map()
   cells: Cell[] = []
@@ -24,12 +26,13 @@ export class GameComponent implements OnInit, OnDestroy {
   room: string = "room"
   nick: string = "nick"
   score: number = 0
+  gameStart: boolean = false
 
   mouseX: number = 450
   mouseY: number = 450
   animationFrameId: number = 0
 
-  constructor(private activatedRoute: ActivatedRoute, private router: Router) {
+  constructor(private activatedRoute: ActivatedRoute, private router: Router, private snackBar: MatSnackBar) {
     activatedRoute.params.subscribe(result => {
       this.nick = result.nick
       this.room = result.room
@@ -44,13 +47,30 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.openSnackBar("Game will start with at least 2 players. Please wait...", 4000)
     this.canvas = document.getElementById('canvas') as HTMLCanvasElement;
     this.context = this.canvas.getContext('2d') as CanvasRenderingContext2D;
     this.redrawAll()
   }
 
-  exitGame() {
+  exitGame(left: boolean = true) {
+    if (left) {
+      this.openSnackBar("Left the game")
+    }
     this.router.navigate(['/'])
+  }
+
+  startGame(){
+    this.openSnackBar("Game has stared.")
+    this.gameStart = true
+  }
+
+  openSnackBar(message: string, time: number = 2000, action: string = "Ok") {
+    this.snackBar.open(message, action, {
+      horizontalPosition: 'right',
+      verticalPosition: 'top',
+      duration: time,
+    });
   }
 
   receiveMessage(event: any) {
@@ -69,9 +89,9 @@ export class GameComponent implements OnInit, OnDestroy {
         // console.log(`Type: ${data.getInt16(0)}, X: ${data.getInt16(2)}, Y: ${data.getInt16(4)}, SCORE: ${data.getInt16(6)}, Nick: ${decoder.decode(nickBuffer)}`)
 
         //Delete user that already left match
-        if(x == -1 && y == -1 && score ==-1){
+        if (x == -1 && y == -1 && score == -1) {
           this.players.delete(nick)
-        }else if (this.nick == nick && this.players.get(this.nick)) {
+        } else if (this.nick == nick && this.players.get(this.nick)) {
           //If the same player then only update score
           const currentPlayer = this.players.get(this.nick)
           currentPlayer!.score = score;
@@ -79,6 +99,10 @@ export class GameComponent implements OnInit, OnDestroy {
         } else {
           //Update other players
           this.players.set(nick, new Player(nick, x, y, score, color))
+        }
+
+        if (!this.gameStart && this.players.size > 1){
+          this.startGame()
         }
         this.redrawAll()
         break;
@@ -88,22 +112,21 @@ export class GameComponent implements OnInit, OnDestroy {
         const xCell = data.getInt16(2)
         const yCell = data.getInt16(4)
         const occupied = data.getInt16(6)
-        const cellToRemove =  this.cells.find(cell => cell.x == xCell && cell.y == yCell)
-        if(cellToRemove){
+        const cellToRemove = this.cells.find(cell => cell.x == xCell && cell.y == yCell)
+        if (cellToRemove) {
           this.cells.splice(this.cells.indexOf(cellToRemove), 1)
         }
         this.cells.push(new Cell(xCell, yCell, occupied !== 0, this.random_rgb()))
         this.redrawAll()
-        break;
 
-      case 3:
-        //todo game start
-        console.log("3333333333333333333")
-        break;
-
-      case 4:
-        //todo game end
-        console.log("444444444444444444444")
+        if (this.cells.filter(cell => cell.occupied).length == this.gameCells){
+          setTimeout(() =>{
+            const list = Array.from(this.players.values());
+            const bestPlayer = list.sort((a, b) => b.score - a.score)[0]
+            this.openSnackBar(`Game has ended. 1st place: ${bestPlayer.nick} with score: ${bestPlayer.score}`, 10000)
+            this.exitGame(false)
+          }, 500)
+        }
         break;
     }
 
@@ -127,7 +150,9 @@ export class GameComponent implements OnInit, OnDestroy {
   }
 
   @HostListener('document:click', ['$event'])
+  @HostListener('document:mousemove', ['$event'])
   click(event: any) {
+    if (!this.gameStart) return;
     cancelAnimationFrame(this.animationFrameId)
     this.mouseX = event.x - this.canvas?.offsetLeft
     this.mouseX = this.standardizeValue(this.mouseX)

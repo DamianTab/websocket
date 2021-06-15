@@ -71,6 +71,7 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
         broadcastPlayerMoveMessage(game, new Player((short) -1, (short) -1, (short) -1, playerNick, null));
         if (game.getPlayers().size() == 0) {
             games.remove(roomName);
+            log.info("Delete game: {}", roomName);
         }
 
     }
@@ -129,7 +130,9 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
                     .array();
             BinaryMessage message = new BinaryMessage(arr);
             synchronized (session) {
-                session.sendMessage(message);
+                if (session.isOpen()){
+                    session.sendMessage(message);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -156,7 +159,9 @@ public class BinaryWebSocket extends BinaryWebSocketHandler {
                     .array();
             BinaryMessage message = new BinaryMessage(arr);
             synchronized (session) {
-                session.sendMessage(message);
+                if (session.isOpen()){
+                    session.sendMessage(message);
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
